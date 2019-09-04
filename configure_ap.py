@@ -108,26 +108,9 @@ class APManager:
 
 
 if __name__ == '__main__':
-    '''
-    driver = webdriver.Chrome(Settings.PATH_TO_CHROMEDRIVER)
-    driver.set_window_size(1280, 1024)
-    time.sleep(1)
-    driver.get(Settings.AP_HOME_PAGE)
-    driver.get('http://192.168.0.1/settings.html#Advanced/Wireless/WirelessSettings')
-
-    driver.find_element_by_xpath("//select[@id='securitySelect']/following-sibling::span").click()
-    b = driver.find_element_by_xpath("//select[@id='securitySelect']/parent::div/ul")
-    dropdown_options = b.find_elements_by_xpath('.//li')
-    for i in dropdown_options:
-        if i.text == 'Unsecured':
-            i.click()
-            break
-            
-    # [y.text for y in b.find_elements_by_xpath('.//li')]
-    '''
     ap = APManager()
     ap.login_ap('admin')
     time.sleep(1)
-    ap.set_ap_params('Emil_Zatopek_5_OPEN', 2.4, 8, '', 'AES', '00099999')
-    time.sleep(3)
+    ap.set_ap_params('Hilton_5_OPEN', 5, 44, '', 'AES', '00099999')
+    time.sleep(1)
     ap.save_params()
