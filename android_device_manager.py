@@ -254,34 +254,6 @@ class AndroidManager:
         except:
             LOGGER.error(f'Was unable to  run chrome')
 
-    def clear_browser_history(self):
-        """
-        TBD ...
-
-        Args:
-            TBD:
-
-        Returns:
-            NA
-
-        Raises:
-            NA
-        """
-
-        self.desired_capabilities = self.create_desire_capabilities('chrome')
-        self.driver = webdriver.Remote("http://localhost:4723/wd/hub", self.desired_capabilities)
-        time.sleep(1)
-
-        try:
-            el = self.driver.find_element_by_id('com.android.chrome:id/menu_button')
-
-        except:
-            el = self.driver.find_element_by_id('com.android.chrome:id/menu_badge')
-
-        finally:
-            LOGGER.error("Was unable to find chrome's menu button")
-        el.click()
-
 
 if __name__ == '__main__':
     init_logger()
