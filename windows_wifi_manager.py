@@ -11,18 +11,29 @@ LOGGER.setLevel(logging.DEBUG)
 
 class WiFiManager:
     """
-    This class use 'netsh' windows cmd tool in order to create wifi profile file (xml).
-    Note that end user is unable to connect windows machine to a secured wifi network
+    This class use 'netsh' Windows cmd tool in order to create wifi profile file (xml).
+    Note that end user is unable to connect Windows machine to a secured wifi network
     unless it has a saved profile.
     Once the profile file is created, it can be added to the profiles list.
-    The next step is to connect the windows machine to the secured network - this is done
+    The next step is to connect the Windows machine to the network - this is done
     by the executing the 'netsh wlan connect' command.
     """
 
     def __init__(self, wifi_profile_filename):
         self.wifi_profile_filename = wifi_profile_filename
+        self.ssid = ''
+        self.root = ''
+        self.ssid_config = ''
+        self.ssid_sub = ''
+        self.msm = ''
+        self.security = ''
+        self.auth_encryption = ''
+        self.shared_key = ''
+        self.add_profile_reply_msg = ''
+        self.reply_msg2 = ''
+        self.network_type = ''
 
-    def create_wifi_profile(self, ssid, password, authentication, encryption):
+    def create_wifi_profile(self, type, ssid, password, authentication, encryption):
         """
         This method create the profile.xml file.
 
@@ -39,26 +50,40 @@ class WiFiManager:
             NA
         """
 
+        self.ssid = ssid
+
         self.root = XML.Element("WLANProfile", attrib={'xmlns': 'http://www.microsoft.com/networking/WLAN/profile/v1'})
-        XML.SubElement(self.root, "name").text = ssid
+        XML.SubElement(self.root, "name").text = self.ssid
         self.ssid_config = XML.SubElement(self.root, "SSIDConfig")
         self.ssid_sub = XML.SubElement(self.ssid_config, "SSID")
-        XML.SubElement(self.ssid_sub, "name").text = ssid
+        XML.SubElement(self.ssid_sub, "name").text = self.ssid
         XML.SubElement(self.root, "connectionType").text = 'ESS'
         XML.SubElement(self.root, "connectionMode").text = 'auto'
-
         self.msm = XML.SubElement(self.root, "MSM")
         self.security = XML.SubElement(self.msm, "security")
-        self.auth_encryption = XML.SubElement(self.security, "authEncryption")
-        XML.SubElement(self.auth_encryption, "authentication").text = authentication
-        XML.SubElement(self.auth_encryption, "encryption").text = encryption
-        XML.SubElement(self.auth_encryption, "useOneX").text = 'false'
 
-        self.shared_key = XML.SubElement(self.security, "sharedKey")
-        XML.SubElement(self.shared_key, "keyType").text = 'passPhrase'
-        XML.SubElement(self.shared_key, "protected").text = 'false'
-        XML.SubElement(self.shared_key, "keyMaterial").text = password
+        self.network_type = type
 
+        if self.network_type == 'SECURED':
+            self.auth_encryption = XML.SubElement(self.security, "authEncryption")
+            XML.SubElement(self.auth_encryption, "authentication").text = authentication
+            XML.SubElement(self.auth_encryption, "encryption").text = encryption
+            XML.SubElement(self.auth_encryption, "useOneX").text = 'false'
+
+            self.shared_key = XML.SubElement(self.security, "sharedKey")
+            XML.SubElement(self.shared_key, "keyType").text = 'passPhrase'
+            XML.SubElement(self.shared_key, "protected").text = 'false'
+            XML.SubElement(self.shared_key, "keyMaterial").text = password
+        elif self.network_type == 'OPEN':
+            self.auth_encryption = XML.SubElement(self.security, "authEncryption")
+            XML.SubElement(self.auth_encryption, "authentication").text = 'open'
+            XML.SubElement(self.auth_encryption, "encryption").text = 'none'
+            XML.SubElement(self.auth_encryption, "useOneX").text = 'false'
+            self.mac_random = XML.SubElement(self.root, "MacRandomization", attrib={'xmlns': 'http://www.microsoft.com/networking/WLAN/profile/v3'})
+            XML.SubElement(self.mac_random, "enableRandomization").text = 'false'
+            XML.SubElement(self.mac_random, "randomizationSeed").text = '10821901'
+        else:
+            LOGGER.error(f'A wrong input value for "network_type" parameter was delivered')
         try:
             tree = XML.ElementTree(self.root)
             tree.write(self.wifi_profile_filename)
@@ -66,18 +91,19 @@ class WiFiManager:
 
         except:
             LOGGER.error(f'Was unable to create {self.wifi_profile_filename}')
-            pass
 
     def add_wifi_profile(self):
         """
-        This method adds the profile to the profile list using the windows cmd command:
+        This method adds the profile to the profile list using the next Windows cmd command:
         'netsh wlan add profile filename=<wifi_profile_xml_file>'
+        for example:
+        'netsh wlan add profile filename=wifi_profile.xml'
 
         Args:
-            ssid: The network name/ssid
-            password: The network password/key
-            authentication: authentication type. could be WPA2PSK | WPA2
-            encryption: Should be set to 'AES'
+            ssid:               The network name/ssid
+            password:           The network password/key
+            authentication:     Authentication type. could be WPA2PSK | WPA2
+            encryption:         Should be set to 'AES'
 
         Returns:
             NA
@@ -88,17 +114,17 @@ class WiFiManager:
 
         args = ['netsh', 'wlan', 'add', 'profile', f'filename={self.wifi_profile_filename}']
         try:
-            self.reply_msg1 = subprocess.check_output(args, stdin=None, stderr=None, shell=False, universal_newlines=False)
-            if b'added on interface' in self.reply_msg1:
-                LOGGER.info(f'{self.reply_msg1}')
+            self.add_profile_reply_msg = subprocess.check_output(args, stdin=None, stderr=None, shell=False, universal_newlines=False)
+            if b'added on interface' in self.add_profile_reply_msg:
+                LOGGER.info(f'{self.add_profile_reply_msg}')
                 # return self.ssid
 
         except():
-            LOGGER.error(f'{self.reply_msg1}')
+            LOGGER.error(f'{self.add_profile_reply_msg}')
 
     def connect_to_wifi(self, ssid):
         """
-        This method connects the windows machine to the wi-fi network using the windows cmd command:
+        This method connects the windows machine to the wi-fi network using the next Windows cmd command:
         'netsh wlan connect name=<network_ssid>'
 
         Args:
@@ -123,13 +149,12 @@ class WiFiManager:
 
 if __name__ == '__main__':
     init_logger()
-    ssid = 'Hilton Opera'
-    password = '00099999'
+    ssid = 'OpenWiFi4'
+    password = '12345678'
     authentication = 'WPA2PSK'
     encryption = 'AES'
 
-    wfm = WiFiManager('wifi_profile.xml')
-    wfm.create_wifi_profile(ssid, password, authentication, encryption)
-    time.sleep(1)
+    wfm = WiFiManager('wifi_open_profile.xml')
+    wfm.create_wifi_profile('OPEN', ssid, password, authentication, encryption)
     wfm.add_wifi_profile()
     wfm.connect_to_wifi(ssid)
